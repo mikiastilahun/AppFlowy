@@ -14,18 +14,21 @@ import { Details2Svg } from '$app/components/_shared/svg/Details2Svg';
 import { FilterSvg } from '$app/components/_shared/svg/FilterSvg';
 import { SortAscSvg } from '$app/components/_shared/svg/SortAscSvg';
 import { PromptWindow } from '$app/components/_shared/PromptWindow';
+import { Draggable } from 'react-beautiful-dnd';
 
 const MIN_COLUMN_WIDTH = 100;
 
 export const GridTableHeaderItem = ({
   controller,
   field,
+  fieldId,
   index,
   onShowFilterClick,
   onShowSortClick,
 }: {
   controller: DatabaseController;
   field: IDatabaseField;
+  fieldId: string;
   index: number;
   onShowFilterClick: () => void;
   onShowSortClick: () => void;
@@ -99,90 +102,104 @@ export const GridTableHeaderItem = ({
   };
 
   return (
-    <>
-      <div
-        // field width minus divider width with padding
-        style={{ width: `${field.width - (index === 0 ? 7 : 14)}px` }}
-        className='flex-shrink-0 border-b border-t border-line-divider'
-      >
-        <div className={'flex w-full items-center justify-between py-2 pl-2'} ref={ref}>
-          <div className={'flex min-w-0 items-center gap-2'}>
-            <div className={'flex h-5 w-5 flex-shrink-0 items-center justify-center text-text-caption'}>
-              <FieldTypeIcon fieldType={field.fieldType}></FieldTypeIcon>
+    <Draggable draggableId={fieldId} index={index}>
+      {(draggableProvided, snapshot) => (
+        <>
+          <div
+            ref={draggableProvided.innerRef}
+            {...draggableProvided.draggableProps}
+            {...draggableProvided.dragHandleProps}
+            className={`flex flex-shrink-0 ${snapshot.isDragging ? ' border bg-white shadow' : ''}`}
+          >
+            <div
+              // field width minus divider width with padding
+              style={{ width: `${field.width - (index === 0 ? 7 : 14)}px` }}
+              className='flex-shrink-0 border-b border-t border-line-divider'
+            >
+              <div className={'flex w-full items-center justify-between py-2 pl-2'} ref={ref}>
+                <div className={'flex min-w-0 items-center gap-2'}>
+                  <div className={'flex h-5 w-5 flex-shrink-0 items-center justify-center text-text-caption'}>
+                    <FieldTypeIcon fieldType={field.fieldType}></FieldTypeIcon>
+                  </div>
+                  <span className={'overflow-hidden text-ellipsis whitespace-nowrap text-text-caption'}>
+                    {field.title}
+                  </span>
+                </div>
+                <div className={'flex items-center gap-1'}>
+                  {sortStore.findIndex((sort) => sort.fieldId === field.fieldId) !== -1 && (
+                    <button onClick={onShowSortClick} className={'rounded p-1 hover:bg-fill-list-hover'}>
+                      <i className={'block h-[16px] w-[16px]'}>
+                        <SortAscSvg></SortAscSvg>
+                      </i>
+                    </button>
+                  )}
+
+                  {filtersStore.findIndex((filter) => filter.fieldId === field.fieldId) !== -1 && (
+                    <button onClick={onShowFilterClick} className={'rounded p-1 hover:bg-fill-list-hover'}>
+                      <i className={'block h-[16px] w-[16px]'}>
+                        <FilterSvg></FilterSvg>
+                      </i>
+                    </button>
+                  )}
+
+                  <button className={'rounded p-1 hover:bg-fill-list-hover'} onClick={() => onFieldOptionsClick()}>
+                    <i className={'block h-[16px] w-[16px]'}>
+                      <Details2Svg></Details2Svg>
+                    </i>
+                  </button>
+                </div>
+              </div>
             </div>
-            <span className={'overflow-hidden text-ellipsis whitespace-nowrap text-text-caption'}>{field.title}</span>
           </div>
-          <div className={'flex items-center gap-1'}>
-            {sortStore.findIndex((sort) => sort.fieldId === field.fieldId) !== -1 && (
-              <button onClick={onShowSortClick} className={'rounded p-1 hover:bg-fill-list-hover'}>
-                <i className={'block h-[16px] w-[16px]'}>
-                  <SortAscSvg></SortAscSvg>
-                </i>
-              </button>
-            )}
 
-            {filtersStore.findIndex((filter) => filter.fieldId === field.fieldId) !== -1 && (
-              <button onClick={onShowFilterClick} className={'rounded p-1 hover:bg-fill-list-hover'}>
-                <i className={'block h-[16px] w-[16px]'}>
-                  <FilterSvg></FilterSvg>
-                </i>
-              </button>
-            )}
-
-            <button className={'rounded p-1 hover:bg-fill-list-hover'} onClick={() => onFieldOptionsClick()}>
-              <i className={'block h-[16px] w-[16px]'}>
-                <Details2Svg></Details2Svg>
-              </i>
-            </button>
+          <div
+            className={'group h-full cursor-col-resize border-b border-t border-line-divider px-[6px]'}
+            onMouseDown={(e) => onMouseDown(e, field.width)}
+          >
+            <div className={'flex h-full w-[3px] justify-center group-hover:bg-fill-hover'}>
+              <div className={'h-full w-[1px] bg-line-divider group-hover:bg-fill-hover'}></div>
+            </div>
           </div>
-        </div>
-      </div>
-      <div
-        className={'group h-full cursor-col-resize border-b border-t border-line-divider px-[6px]'}
-        onMouseDown={(e) => onMouseDown(e, field.width)}
-      >
-        <div className={'flex h-full w-[3px] justify-center group-hover:bg-fill-hover'}>
-          <div className={'h-full w-[1px] bg-line-divider group-hover:bg-fill-hover'}></div>
-        </div>
-      </div>
-      {editingField && (
-        <EditFieldPopup
-          open={showFieldEditor}
-          anchorEl={ref.current}
-          cellIdentifier={
-            {
-              fieldId: editingField.fieldId,
-              fieldType: editingField.fieldType,
-              viewId: controller.viewId,
-            } as CellIdentifier
-          }
-          viewId={controller.viewId}
-          onOutsideClick={() => {
-            setShowFieldEditor(false);
-          }}
-          controller={controller}
-          changeFieldTypeClick={(el) => {
-            setChangeFieldTypeAnchorEl(el);
-            setShowChangeFieldTypePopup(true);
-          }}
-          onDeletePropertyClick={onDeletePropertyClick}
-        ></EditFieldPopup>
-      )}
+          {editingField && (
+            <EditFieldPopup
+              open={showFieldEditor}
+              anchorEl={ref.current}
+              cellIdentifier={
+                {
+                  fieldId: editingField.fieldId,
+                  fieldType: editingField.fieldType,
+                  viewId: controller.viewId,
+                } as CellIdentifier
+              }
+              viewId={controller.viewId}
+              onOutsideClick={() => {
+                setShowFieldEditor(false);
+              }}
+              controller={controller}
+              changeFieldTypeClick={(el) => {
+                setChangeFieldTypeAnchorEl(el);
+                setShowChangeFieldTypePopup(true);
+              }}
+              onDeletePropertyClick={onDeletePropertyClick}
+            ></EditFieldPopup>
+          )}
 
-      <ChangeFieldTypePopup
-        open={showChangeFieldTypePopup}
-        anchorEl={changeFieldTypeAnchorEl}
-        onClick={(newType) => changeFieldType(newType)}
-        onOutsideClick={() => setShowChangeFieldTypePopup(false)}
-      ></ChangeFieldTypePopup>
+          <ChangeFieldTypePopup
+            open={showChangeFieldTypePopup}
+            anchorEl={changeFieldTypeAnchorEl}
+            onClick={(newType) => changeFieldType(newType)}
+            onOutsideClick={() => setShowChangeFieldTypePopup(false)}
+          ></ChangeFieldTypePopup>
 
-      {showDeletePropertyPrompt && (
-        <PromptWindow
-          msg={'Are you sure you want to delete this property?'}
-          onYes={() => onDelete()}
-          onCancel={() => setShowDeletePropertyPrompt(false)}
-        ></PromptWindow>
+          {showDeletePropertyPrompt && (
+            <PromptWindow
+              msg={'Are you sure you want to delete this property?'}
+              onYes={() => onDelete()}
+              onCancel={() => setShowDeletePropertyPrompt(false)}
+            ></PromptWindow>
+          )}
+        </>
       )}
-    </>
+    </Draggable>
   );
 };

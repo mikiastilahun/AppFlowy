@@ -4,12 +4,13 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Error};
-use appflowy_integrate::{CollabObject, CollabType, PersistenceError, RocksCollabDB, YrsDocAction};
+use appflowy_integrate::{PersistenceError, RocksCollabDB, YrsDocAction};
 use collab::core::collab::MutexCollab;
 use collab::preclude::Collab;
 use collab_database::database::get_database_row_ids;
 use collab_database::rows::database_row_document_id_from_row_id;
 use collab_database::user::{get_database_with_views, DatabaseWithViews};
+use collab_define::{CollabObject, CollabType};
 use collab_folder::core::{Folder, View, ViewLayout};
 use parking_lot::Mutex;
 
@@ -175,7 +176,7 @@ fn get_collab_init_update(
   let _ = collab.with_origin_transact_mut(|txn| {
     collab_db
       .read_txn()
-      .load_doc(uid, &collab_object.object_id, txn)
+      .load_doc_with_txn(uid, &collab_object.object_id, txn)
   })?;
   let update = collab.encode_as_update_v1().0;
   if update.is_empty() {
@@ -194,7 +195,7 @@ fn get_database_init_update(
   let _ = collab.with_origin_transact_mut(|txn| {
     collab_db
       .read_txn()
-      .load_doc(uid, &collab_object.object_id, txn)
+      .load_doc_with_txn(uid, &collab_object.object_id, txn)
   })?;
 
   let row_ids = get_database_row_ids(&collab).unwrap_or_default();
@@ -215,7 +216,11 @@ async fn sync_folder(
   let (folder, update) = {
     let collab = Collab::new(uid, workspace_id, "phantom", vec![]);
     // Use the temporary result to short the lifetime of the TransactionMut
-    collab.with_origin_transact_mut(|txn| collab_db.read_txn().load_doc(uid, workspace_id, txn))?;
+    collab.with_origin_transact_mut(|txn| {
+      collab_db
+        .read_txn()
+        .load_doc_with_txn(uid, workspace_id, txn)
+    })?;
     let update = collab.encode_as_update_v1().0;
     (
       MutexFolder::new(Folder::open(
@@ -264,7 +269,7 @@ async fn sync_database_views(
       .with_origin_transact_mut(|txn| {
         collab_db
           .read_txn()
-          .load_doc(uid, database_views_aggregate_id, txn)
+          .load_doc_with_txn(uid, database_views_aggregate_id, txn)
       })
       .map(|_| {
         (

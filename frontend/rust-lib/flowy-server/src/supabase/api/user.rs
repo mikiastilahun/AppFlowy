@@ -8,7 +8,7 @@ use std::time::Duration;
 use anyhow::Error;
 use collab::core::collab::MutexCollab;
 use collab::core::origin::CollabOrigin;
-use collab_plugins::cloud_storage::CollabObject;
+use collab_define::{CollabObject, CollabType};
 use parking_lot::RwLock;
 use serde_json::Value;
 use tokio::sync::oneshot::channel;
@@ -24,11 +24,12 @@ use lib_infra::box_any::BoxAny;
 use lib_infra::future::FutureResult;
 use lib_infra::util::timestamp;
 
+use crate::response::ExtendedResponse;
 use crate::supabase::api::request::{
   get_updates_from_server, FetchObjectUpdateAction, RetryCondition,
 };
 use crate::supabase::api::util::{
-  ExtendedResponse, InsertParamsBuilder, RealtimeBinaryColumnDecoder, SupabaseBinaryColumnDecoder,
+  InsertParamsBuilder, RealtimeBinaryColumnDecoder, SupabaseBinaryColumnDecoder,
 };
 use crate::supabase::api::{flush_collab_with_update, PostgresWrapper, SupabaseServerService};
 use crate::supabase::define::*;
